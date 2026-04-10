@@ -1,0 +1,25 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies (if you add a package.json later)
+node_modules/
+
+# Logs & debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment / secrets (local overrides)
+.env
+.env.*
+!.env.example
+
+# Build output (if you add a bundler)
+dist/
+build/
+.cache/
+
+# Optional tooling
+.vercel/
