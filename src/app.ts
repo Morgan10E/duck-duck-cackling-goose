@@ -597,7 +597,7 @@ function applyPickedTaxon(t: InatTaxon): void {
 
   setActivePair(next);
   applyTaxonLabels();
-  buildPresetList();
+  void buildPresetList();
   void refreshTaxonPickerVisuals();
   refreshStatsUI();
   closeTaxonSearch();
@@ -788,22 +788,76 @@ function applyPresetById(presetId: string): void {
   if (!preset) return;
   setActivePair(preset.pair);
   applyTaxonLabels();
-  buildPresetList();
+  void buildPresetList();
   void refreshTaxonPickerVisuals();
   refreshStatsUI();
   closeSettings();
   void startRound();
 }
 
-function buildPresetList(): void {
+async function buildPresetList(): Promise<void> {
   el.presetList.replaceChildren();
   const active = pairKey(getActivePair());
+  const ids = [...new Set(PRESETS.flatMap((p) => [p.pair.idA, p.pair.idB]))];
+  const fetched = await Promise.all(ids.map((id) => fetchTaxonById(id)));
+  const byId = new Map<number, InatTaxon | null>();
+  ids.forEach((id, i) => byId.set(id, fetched[i] ?? null));
+
   for (const p of PRESETS) {
+    const ta = byId.get(p.pair.idA) ?? null;
+    const tb = byId.get(p.pair.idB) ?? null;
+    const urlA = ta ? taxonSquareUrl(ta) : null;
+    const urlB = tb ? taxonSquareUrl(tb) : null;
+
     const li = document.createElement("li");
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "preset-btn";
-    btn.textContent = p.title;
+    btn.setAttribute("aria-label", `${p.pair.labelA} / ${p.pair.labelB} preset`);
+
+    const sr = document.createElement("span");
+    sr.className = "preset-btn-sr";
+    sr.textContent = p.title;
+
+    const thumbA = document.createElement(urlA ? "img" : "span");
+    thumbA.className = "preset-btn-img preset-btn-img--a";
+    if (urlA) {
+      const img = thumbA as HTMLImageElement;
+      img.alt = "";
+      img.decoding = "async";
+      img.src = urlA;
+    } else {
+      thumbA.classList.add("preset-btn-img--placeholder");
+      thumbA.setAttribute("aria-hidden", "true");
+    }
+
+    const mid = document.createElement("span");
+    mid.className = "preset-btn-mid";
+    const nameA = document.createElement("span");
+    nameA.className = "preset-btn-name preset-btn-name--a";
+    nameA.textContent = p.pair.labelA;
+    const sep = document.createElement("span");
+    sep.className = "preset-btn-sep";
+    sep.textContent = " / ";
+    const nameB = document.createElement("span");
+    nameB.className = "preset-btn-name preset-btn-name--b";
+    nameB.textContent = p.pair.labelB;
+    mid.append(nameA, sep, nameB);
+
+    const thumbB = document.createElement(urlB ? "img" : "span");
+    thumbB.className = "preset-btn-img preset-btn-img--b";
+    if (urlB) {
+      const img = thumbB as HTMLImageElement;
+      img.alt = "";
+      img.decoding = "async";
+      img.src = urlB;
+    } else {
+      thumbB.classList.add("preset-btn-img--placeholder");
+      thumbB.setAttribute("aria-hidden", "true");
+    }
+
+    btn.append(sr, thumbA, mid, thumbB);
+
     if (pairKey(p.pair) === active) {
       btn.classList.add("preset-btn--active");
       btn.setAttribute("aria-current", "true");
@@ -821,7 +875,7 @@ function boot(): void {
     /* ignore */
   }
   applyTaxonLabels();
-  buildPresetList();
+  void buildPresetList();
   void refreshTaxonPickerVisuals();
   refreshStatsUI();
   void startRound();

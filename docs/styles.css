@@ -677,22 +677,78 @@ body {
 }
 
 .preset-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
   width: 100%;
-  padding: 0.65rem 0.85rem;
+  padding: 0.5rem 0.65rem;
   border: 1px solid var(--surface-elevated);
   border-radius: var(--radius);
   background: var(--bg);
   color: var(--text);
   font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-align: left;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
 
+.preset-btn-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.preset-btn-img {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.preset-btn-img--placeholder {
+  display: inline-block;
+  background: linear-gradient(145deg, var(--surface-elevated), var(--surface));
+}
+
+.preset-btn-mid {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.15rem 0.25rem;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.preset-btn-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.preset-btn-sep {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
 .preset-btn:hover {
   background: var(--surface-elevated);
+}
+
+.preset-btn:hover .preset-btn-img {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .preset-btn--active {
