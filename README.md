@@ -30,6 +30,14 @@ npx --yes serve docs
 
 Open the URL it prints (for example `http://localhost:3000`). Use a local server so `localStorage` and cookies behave reliably; opening `index.html` directly as a `file://` URL can be flaky.
 
+### URL parameters (share a species pair)
+
+On load, if both are present, **`taxonA`** and **`taxonB`** set the active pair (iNaturalist taxon IDs). Short aliases **`a`** and **`b`** work the same. Example:
+
+`http://localhost:3000/?taxonA=59220&taxonB=7089`
+
+The app resolves names from the taxa API, persists the pair, and keeps the query string in sync with **`history.replaceState`** when you change species (other query parameters are preserved).
+
 ## iNaturalist access
 
 The game loads photos with **anonymous** `fetch` requests to `https://api.inaturalist.org/v1/observations` (no login, no API token). You may still see **HTTP 403** from the API under heavy use or WAF rules; the game retries automatically.

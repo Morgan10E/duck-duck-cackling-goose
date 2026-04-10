@@ -8,6 +8,9 @@ const INAT_DATE_FETCH_MAX_PAGES = 5;
 const STORAGE_KEY = "ddcg_v2";
 const LEGACY_STATS_COOKIE = "ddcg_stats";
 const FEEDBACK_MS = 450;
+/** URL query keys for deep-linking a pair (e.g. `?taxonA=59220&taxonB=7089`). Short aliases `a` / `b` also work. */
+const URL_PARAM_TAXON_A = "taxonA";
+const URL_PARAM_TAXON_B = "taxonB";
 const STATS_DEFAULT = {
     totalAttempts: 0,
     totalCorrect: 0,
@@ -56,6 +59,51 @@ function pairKey(pair) {
 }
 function clonePair(pair) {
     return { ...pair };
+}
+function readPositiveIntParam(params, ...keys) {
+    for (const key of keys) {
+        const raw = params.get(key);
+        if (raw == null || raw === "")
+            continue;
+        const n = Number.parseInt(raw, 10);
+        if (Number.isFinite(n) && n > 0)
+            return n;
+    }
+    return null;
+}
+function syncUrlToPair(pair) {
+    try {
+        const url = new URL(window.location.href);
+        url.searchParams.set(URL_PARAM_TAXON_A, String(pair.idA));
+        url.searchParams.set(URL_PARAM_TAXON_B, String(pair.idB));
+        window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+    catch {
+        /* ignore */
+    }
+}
+/**
+ * If the URL includes both taxon IDs, fetch names and set the active pair (overrides persisted default for this load).
+ * @returns whether URL params were applied
+ */
+async function hydrateFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const idA = readPositiveIntParam(params, URL_PARAM_TAXON_A, "a");
+    const idB = readPositiveIntParam(params, URL_PARAM_TAXON_B, "b");
+    if (idA === null || idB === null)
+        return false;
+    if (idA === idB)
+        return false;
+    const [ta, tb] = await Promise.all([fetchTaxonById(idA), fetchTaxonById(idB)]);
+    if (!ta || !tb || ta.id !== idA || tb.id !== idB)
+        return false;
+    setActivePair({
+        idA,
+        idB,
+        labelA: taxonDisplayLabel(ta),
+        labelB: taxonDisplayLabel(tb),
+    });
+    return true;
 }
 function getEl(id) {
     const node = document.getElementById(id);
@@ -347,6 +395,7 @@ function setActivePair(pair) {
         state.statsByPairKey[k] = { ...STATS_DEFAULT };
     }
     savePersisted(state);
+    syncUrlToPair(pair);
 }
 function pct(n, d) {
     if (d === 0)
@@ -736,16 +785,18 @@ async function buildPresetList() {
         el.presetList.appendChild(li);
     }
 }
-function boot() {
+async function boot() {
     try {
         localStorage.removeItem("ddcg_inat_jwt");
     }
     catch {
         /* ignore */
     }
+    await hydrateFromUrl();
     applyTaxonLabels();
     void buildPresetList();
     void refreshTaxonPickerVisuals();
+    syncUrlToPair(getActivePair());
     refreshStatsUI();
     void startRound();
 }
@@ -771,4 +822,4 @@ el.taxonSearchModal.addEventListener("click", (ev) => {
     if (ev.target === el.taxonSearchModal)
         closeTaxonSearch();
 });
-boot();
+void boot();
