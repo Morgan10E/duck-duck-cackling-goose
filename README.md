@@ -16,7 +16,7 @@ Open the URL it prints (for example `http://localhost:3000`). Use a local server
 
 The game loads photos with **anonymous** `fetch` requests to `https://api.inaturalist.org/v1/observations` (no login, no API token). You may still see **HTTP 403** from the API under heavy use or WAF rules; the game retries automatically.
 
-**Pagination limit:** that endpoint returns **403** when `page` is greater than **200** (with typical `per_page` such as 50), which caps usable results at about **the first 10,000** observations per taxon. The game wraps its per-species photo cursor inside that window so common taxa (e.g. Canada Goose) do not request illegal pages.
+Each round picks a **random time within the last year**, queries observations for the taxon before `d2` on that cutoff time, sorts by `observed_on` descending, and uses the **most recent observation at or before** that time. We assume we will find one - an error is thrown if the results are empty or have no photos, and the turn retries.
 
 On first load, any legacy **`ddcg_inat_jwt`** value in `localStorage` from an older build is cleared; it is no longer used.
 
@@ -49,8 +49,8 @@ On first load, any legacy **`ddcg_inat_jwt`** value in `localStorage` from an ol
 | `docs/app.js` | iNaturalist API, game loop, cookie stats |
 | `docs/.nojekyll` | Disables Jekyll so odd paths are not mis-processed |
 
-Stats (streaks, percentages, and per-species **observation cursor** `cacklingGooseIndex` / `canadaGooseIndex` for cycling photos in order) are stored in a cookie named `ddcg_stats` on your site’s origin.
+Stats (streaks, percentages, and the guess matrix) are stored in a cookie named `ddcg_stats` on your site’s origin.
 
 ## API
 
-The game calls `https://api.inaturalist.org/v1/observations` with `quality_grade=research`, `photos=true`, and taxon IDs **59220** (Cackling Goose) and **7089** (Canada Goose). Photo credit uses the observation’s observer login from the API response.
+The game calls `https://api.inaturalist.org/v1/observations` with `quality_grade=research`, `photos=true`, `order_by=observed_on`, `order=desc`, date bounds `d2`, and taxon IDs **59220** (Cackling Goose) and **7089** (Canada Goose). Photo credit uses the observation’s observer login from the API response.

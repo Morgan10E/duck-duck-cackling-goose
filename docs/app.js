@@ -2,13 +2,9 @@ const INAT_BASE = "https://api.inaturalist.org/v1/observations";
 const TAXON_CACKLING = 59220;
 const TAXON_CANADA = 7089;
 
-/**
- * Observation search returns HTTP 403 when `page` exceeds this limit (verified 2026-04).
- * With {@link INAT_OBSERVATIONS_PER_PAGE}, only the first N results are addressable by pagination.
- */
-const INAT_OBSERVATIONS_MAX_PAGE = 200;
-const INAT_OBSERVATIONS_PER_PAGE = 50;
-const INAT_MAX_ACCESSIBLE_RESULTS = INAT_OBSERVATIONS_MAX_PAGE * INAT_OBSERVATIONS_PER_PAGE;
+/** How far back we draw a random cutoff when picking an observation (prior to `d2`). One year in MS. */
+const OBS_RANDOM_WINDOW_MS = 365 * 24 * 60 * 60 * 1000;
+const INAT_DATE_FETCH_PER_PAGE = 1;
 
 /** @type {Readonly<Record<'cackling' | 'canada', number>>} */
 const TAXON_ID_BY_SPECIES = Object.freeze({
@@ -74,10 +70,7 @@ async function fetchInatJson(searchParams) {
   });
 
   if (!res.ok) {
-    const hint =
-      res.status === 403
-        ? " (often page > 200 on this API, or rate limits)"
-        : "";
+    const hint = res.status === 403 ? " (rate limits or blocking)" : "";
     throw new Error(`iNaturalist error ${res.status}${hint}`);
   }
   return res.json();
@@ -88,72 +81,50 @@ function photoToMediumUrl(url) {
   return url.replace(/\/(square|thumb|small)\.(jpg|jpeg|png|webp)/i, "/medium.$2");
 }
 
-/** @param {number} taxonId */
-function gooseIndexKey(taxonId) {
-  return taxonId === TAXON_CACKLING ? "cacklingGooseIndex" : "canadaGooseIndex";
+function isoDateUTC(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+/** @param {{ time_observed_at?: string, observed_on?: string }} obs */
+function observedAtMs(obs) {
+  const s = obs.time_observed_at || obs.observed_on;
+  if (!s) return NaN;
+  const ms = Date.parse(s);
+  return Number.isFinite(ms) ? ms : NaN;
 }
 
 /**
- * Next observation for this taxon uses a running index in cookies (random seed once per species),
- * then increments by one (mod wrapped size) after each successful pick.
- * Indices wrap within {@link INAT_MAX_ACCESSIBLE_RESULTS} because the API forbids `page` > 200.
+ * Picks a random instant in the last {@link OBS_RANDOM_WINDOW_MS}, then loads the newest
+ * research-grade observation with photos for `taxonId` that is observed on or before that
+ * instant (`order_by=observed_on`, `order=desc`).
  *
  * @param {number} taxonId
  * @returns {Promise<{ imageUrl: string, login: string, observation: object }>}
  */
-async function fetchSequentialObservation(taxonId) {
-  const countData = await fetchInatJson(
-    buildSearchParams({ taxon_id: String(taxonId), per_page: "1" })
+async function fetchObservationForRandomCutoff(taxonId) {
+  const now = Date.now();
+  const cutoff = new Date(now - Math.random() * OBS_RANDOM_WINDOW_MS);
+  let d2 = isoDateUTC(cutoff);
+
+  const data = await fetchInatJson(
+    buildSearchParams({
+      taxon_id: String(taxonId),
+      per_page: String(INAT_DATE_FETCH_PER_PAGE),
+      d2,
+      order_by: "observed_on",
+      order: "desc",
+    })
   );
-  const total = countData.total_results ?? 0;
-  if (total === 0) {
-    throw new Error("No research-grade observations with photos for this species.");
+  const list = data.results ?? [];
+  for (const obs of list) {
+    if (!Array.isArray(obs.photos) || obs.photos.length === 0) continue;
+    const rawUrl = obs.photos[0].url;
+    const imageUrl = photoToMediumUrl(rawUrl);
+    const login = obs.user?.login ?? "unknown";
+    return { imageUrl, login, observation: obs };
   }
 
-  const perPage = INAT_OBSERVATIONS_PER_PAGE;
-  /** @type {number} */
-  const wrappedTotal = Math.min(total, INAT_MAX_ACCESSIBLE_RESULTS);
-
-  const key = gooseIndexKey(taxonId);
-  const stats = loadStats();
-
-  if (typeof stats[key] !== "number" || !Number.isFinite(stats[key])) {
-    stats[key] = Math.floor(Math.random() * wrappedTotal);
-    saveStats(stats);
-  }
-
-  let idx = ((Math.trunc(stats[key] ?? 0) % wrappedTotal) + wrappedTotal) % wrappedTotal;
-  const maxTries = Math.min(wrappedTotal, 300);
-
-  for (let attempt = 0; attempt < maxTries; attempt++) {
-    const page = Math.floor(idx / perPage) + 1;
-    const offset = idx % perPage;
-    const pageData = await fetchInatJson(
-      buildSearchParams({
-        taxon_id: String(taxonId),
-        per_page: String(perPage),
-        page: String(page),
-      })
-    );
-    const list = pageData.results ?? [];
-    const obs = list[offset];
-    if (
-      obs &&
-      obs.taxon?.id === taxonId &&
-      Array.isArray(obs.photos) &&
-      obs.photos.length > 0
-    ) {
-      stats[key] = (idx + 1) % wrappedTotal;
-      saveStats(stats);
-      const rawUrl = obs.photos[0].url;
-      const imageUrl = photoToMediumUrl(rawUrl);
-      const login = obs.user?.login ?? "unknown";
-      return { imageUrl, login, observation: obs };
-    }
-    idx = (idx + 1) % wrappedTotal;
-  }
-
-  throw new Error("Could not load a photo. Try again.");
+  throw new Error("Could not load a photo for this species. Try again.");
 }
 
 function readCookie(name) {
@@ -177,7 +148,10 @@ function loadStats() {
   if (!raw) return { ...STATS_DEFAULT };
   try {
     const parsed = JSON.parse(raw);
-    return { ...STATS_DEFAULT, ...parsed };
+    const merged = { ...STATS_DEFAULT, ...parsed };
+    delete merged.cacklingGooseIndex;
+    delete merged.canadaGooseIndex;
+    return merged;
   } catch {
     return { ...STATS_DEFAULT };
   }
@@ -313,7 +287,7 @@ async function startRound() {
   const taxonId = TAXON_ID_BY_SPECIES[actual];
 
   try {
-    const { imageUrl, login } = await fetchSequentialObservation(taxonId);
+    const { imageUrl, login } = await fetchObservationForRandomCutoff(taxonId);
     roundActualCackling = actual;
 
     setPhotoCredit(login);
