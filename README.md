@@ -1,6 +1,6 @@
 # Duck Duck Cackling Goose
 
-A small browser game: tell two **iNaturalist** species apart from research-grade photos. Defaults to **Cackling Goose** vs **Canada Goose**; you can switch to other preset pairs (finches, swallows) in **Species pair** settings. The static site lives in **`docs/`** for [GitHub Pages](https://pages.github.com/).
+A small browser game: tell two **iNaturalist** species apart from research-grade photos. Defaults to **Cackling Goose** vs **Canada Goose**; open **Species pair** for presets or tap the **circular taxon photos** to search iNaturalist species (taxa with at least one observation; quiz photos are still research-grade). The static site lives in **`docs/`** for [GitHub Pages](https://pages.github.com/).
 
 ## Development
 

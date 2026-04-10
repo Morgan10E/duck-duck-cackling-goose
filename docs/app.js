@@ -1,5 +1,7 @@
 "use strict";
 const INAT_BASE = "https://api.inaturalist.org/v1/observations";
+const INAT_TAXA_BASE = "https://api.inaturalist.org/v1/taxa";
+const TAXON_SEARCH_DEBOUNCE_MS = 320;
 const OBS_RANDOM_WINDOW_MS = 365 * 24 * 60 * 60 * 1000;
 const INAT_DATE_FETCH_PER_PAGE = 50;
 const INAT_DATE_FETCH_MAX_PAGES = 5;
@@ -87,9 +89,21 @@ const el = {
     statWhenAGuessB: getEl("statWhenAGuessB"),
     statWhenBGuessA: getEl("statWhenBGuessA"),
     statWhenBGuessB: getEl("statWhenBGuessB"),
+    btnPickTaxonA: getEl("btnPickTaxonA"),
+    btnPickTaxonB: getEl("btnPickTaxonB"),
+    taxonPickLabelA: getEl("taxonPickLabelA"),
+    taxonPickLabelB: getEl("taxonPickLabelB"),
+    taxonSearchModal: getEl("taxonSearchModal"),
+    taxonSearchTitle: getEl("taxonSearchTitle"),
+    taxonSearchInput: getEl("taxonSearchInput"),
+    taxonSearchResults: getEl("taxonSearchResults"),
+    taxonSearchClose: getEl("taxonSearchClose"),
+    taxonSearchHint: getEl("taxonSearchHint"),
 };
 let roundActual = null;
 let roundBusy = false;
+let taxonSearchTarget = null;
+let taxonSearchDebounceTimer = null;
 function buildSearchParams(overrides) {
     return new URLSearchParams({
         photos: "true",
@@ -107,6 +121,55 @@ async function fetchInatJson(searchParams) {
         throw new Error(`iNaturalist error ${res.status}${hint}`);
     }
     return res.json();
+}
+async function fetchTaxaJson(searchParams) {
+    const url = `${INAT_TAXA_BASE}?${searchParams}`;
+    const res = await fetch(url, {
+        headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+        const hint = res.status === 403 ? " (rate limits or blocking)" : "";
+        throw new Error(`iNaturalist taxa error ${res.status}${hint}`);
+    }
+    return res.json();
+}
+function taxonDisplayLabel(t) {
+    const c = t.preferred_common_name?.trim();
+    if (c)
+        return c;
+    return t.name?.trim() || `Taxon ${t.id}`;
+}
+function taxonSquareUrl(t) {
+    const p = t.default_photo;
+    const u = p?.square_url || p?.url;
+    return u && u.length > 0 ? u : null;
+}
+async function fetchTaxonById(id) {
+    try {
+        const data = await fetchTaxaJson(new URLSearchParams({ id: String(id) }));
+        const t = data.results?.[0];
+        return t && t.id === id ? t : null;
+    }
+    catch {
+        return null;
+    }
+}
+async function searchTaxaForPicker(query) {
+    const q = query.trim();
+    if (q.length < 2)
+        return [];
+    const data = await fetchTaxaJson(new URLSearchParams({
+        q,
+        rank: "species",
+        per_page: "25",
+        order: "desc",
+        order_by: "observations_count",
+    }));
+    const list = data.results ?? [];
+    return list.filter((t) => t.is_active !== false &&
+        typeof t.id === "number" &&
+        (t.observations_count ?? 0) > 0 &&
+        t.rank === "species");
 }
 function photoToMediumUrl(url) {
     if (!url)
@@ -303,6 +366,138 @@ function applyTaxonLabels() {
     el.statMatrixRowWhenA.textContent = short(pair.labelA);
     el.statMatrixRowWhenB.textContent = short(pair.labelB);
 }
+async function refreshTaxonPickerVisuals() {
+    const pair = getActivePair();
+    el.taxonPickLabelA.textContent = `Left species: ${pair.labelA}. Tap to replace.`;
+    el.taxonPickLabelB.textContent = `Right species: ${pair.labelB}. Tap to replace.`;
+    el.btnPickTaxonA.setAttribute("aria-label", `Replace ${pair.labelA} (left quiz button)`);
+    el.btnPickTaxonB.setAttribute("aria-label", `Replace ${pair.labelB} (right quiz button)`);
+    const [ta, tb] = await Promise.all([fetchTaxonById(pair.idA), fetchTaxonById(pair.idB)]);
+    const urlA = ta ? taxonSquareUrl(ta) : null;
+    const urlB = tb ? taxonSquareUrl(tb) : null;
+    el.btnPickTaxonA.style.backgroundImage = urlA ? `url("${urlA}")` : "";
+    el.btnPickTaxonB.style.backgroundImage = urlB ? `url("${urlB}")` : "";
+}
+function showTaxonSearchHint(text) {
+    el.taxonSearchHint.textContent = text;
+    el.taxonSearchHint.classList.toggle("hidden", text.length === 0);
+}
+function clearTaxonSearchUI() {
+    el.taxonSearchInput.value = "";
+    el.taxonSearchResults.replaceChildren();
+    showTaxonSearchHint("");
+}
+function openTaxonSearch(slot) {
+    taxonSearchTarget = slot;
+    const pair = getActivePair();
+    el.taxonSearchTitle.textContent =
+        slot === "a" ? `Replace: ${pair.labelA}` : `Replace: ${pair.labelB}`;
+    clearTaxonSearchUI();
+    el.taxonSearchModal.showModal();
+    window.setTimeout(() => el.taxonSearchInput.focus(), 0);
+}
+function closeTaxonSearch() {
+    taxonSearchTarget = null;
+    el.taxonSearchModal.close();
+    if (taxonSearchDebounceTimer !== null) {
+        clearTimeout(taxonSearchDebounceTimer);
+        taxonSearchDebounceTimer = null;
+    }
+    clearTaxonSearchUI();
+}
+function renderTaxonSearchResults(results) {
+    el.taxonSearchResults.replaceChildren();
+    const slot = taxonSearchTarget;
+    if (!slot)
+        return;
+    const pair = getActivePair();
+    const otherId = slot === "a" ? pair.idB : pair.idA;
+    let added = 0;
+    for (const t of results) {
+        if (t.id === otherId)
+            continue;
+        const li = document.createElement("li");
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "taxon-search-result";
+        const thumb = document.createElement("img");
+        thumb.className = "taxon-search-result-thumb";
+        thumb.alt = "";
+        const su = taxonSquareUrl(t);
+        if (su)
+            thumb.src = su;
+        else
+            thumb.style.visibility = "hidden";
+        const wrap = document.createElement("div");
+        wrap.className = "taxon-search-result-text";
+        const nameEl = document.createElement("div");
+        nameEl.className = "taxon-search-result-name";
+        nameEl.textContent = taxonDisplayLabel(t);
+        const sci = document.createElement("div");
+        sci.className = "taxon-search-result-sci";
+        sci.textContent = t.name ?? "";
+        wrap.append(nameEl, sci);
+        btn.append(thumb, wrap);
+        btn.addEventListener("click", () => applyPickedTaxon(t));
+        li.appendChild(btn);
+        el.taxonSearchResults.appendChild(li);
+        added += 1;
+    }
+    if (added === 0 && results.length > 0) {
+        showTaxonSearchHint("All matching species are already the other slot. Try a different search.");
+    }
+}
+async function runTaxonSearchQuery() {
+    showTaxonSearchHint("");
+    el.taxonSearchResults.replaceChildren();
+    const q = el.taxonSearchInput.value;
+    if (q.trim().length < 2) {
+        showTaxonSearchHint("Type at least 2 characters.");
+        return;
+    }
+    try {
+        const results = await searchTaxaForPicker(q);
+        if (results.length === 0) {
+            showTaxonSearchHint("No species found with observations. Try another name.");
+            return;
+        }
+        renderTaxonSearchResults(results);
+    }
+    catch (e) {
+        const msg = e instanceof Error ? e.message : "Search failed.";
+        showTaxonSearchHint(msg);
+    }
+}
+function scheduleTaxonSearch() {
+    if (taxonSearchDebounceTimer !== null)
+        clearTimeout(taxonSearchDebounceTimer);
+    taxonSearchDebounceTimer = setTimeout(() => {
+        taxonSearchDebounceTimer = null;
+        void runTaxonSearchQuery();
+    }, TAXON_SEARCH_DEBOUNCE_MS);
+}
+function applyPickedTaxon(t) {
+    const slot = taxonSearchTarget;
+    if (!slot)
+        return;
+    const pair = getActivePair();
+    const otherId = slot === "a" ? pair.idB : pair.idA;
+    if (t.id === otherId) {
+        showTaxonSearchHint("Pick a different species than the other slot.");
+        return;
+    }
+    const label = taxonDisplayLabel(t);
+    const next = slot === "a"
+        ? { idA: t.id, idB: pair.idB, labelA: label, labelB: pair.labelB }
+        : { idA: pair.idA, idB: t.id, labelA: pair.labelA, labelB: label };
+    setActivePair(next);
+    applyTaxonLabels();
+    buildPresetList();
+    void refreshTaxonPickerVisuals();
+    refreshStatsUI();
+    closeTaxonSearch();
+    void startRound();
+}
 function refreshStatsUI() {
     const s = getCurrentStats();
     el.statCurrentStreak.textContent = formatStreak(s.currentStreak);
@@ -455,9 +650,12 @@ function closeStats() {
     el.statsModal.close();
 }
 function openSettings() {
+    void refreshTaxonPickerVisuals();
     el.settingsModal.showModal();
 }
 function closeSettings() {
+    if (el.taxonSearchModal.open)
+        closeTaxonSearch();
     el.settingsModal.close();
 }
 function applyPresetById(presetId) {
@@ -467,6 +665,7 @@ function applyPresetById(presetId) {
     setActivePair(preset.pair);
     applyTaxonLabels();
     buildPresetList();
+    void refreshTaxonPickerVisuals();
     refreshStatsUI();
     closeSettings();
     void startRound();
@@ -498,6 +697,7 @@ function boot() {
     }
     applyTaxonLabels();
     buildPresetList();
+    void refreshTaxonPickerVisuals();
     refreshStatsUI();
     void startRound();
 }
@@ -514,5 +714,13 @@ el.statsModal.addEventListener("click", (ev) => {
 el.settingsModal.addEventListener("click", (ev) => {
     if (ev.target === el.settingsModal)
         closeSettings();
+});
+el.btnPickTaxonA.addEventListener("click", () => openTaxonSearch("a"));
+el.btnPickTaxonB.addEventListener("click", () => openTaxonSearch("b"));
+el.taxonSearchClose.addEventListener("click", closeTaxonSearch);
+el.taxonSearchInput.addEventListener("input", scheduleTaxonSearch);
+el.taxonSearchModal.addEventListener("click", (ev) => {
+    if (ev.target === el.taxonSearchModal)
+        closeTaxonSearch();
 });
 boot();

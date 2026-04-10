@@ -166,7 +166,52 @@
         <p class="settings-lede">
           Choose two species (left button vs right). Stats are kept separately for each pair.
         </p>
+        <p class="settings-sub">Tap a circle to replace that species using iNaturalist search (species with
+          research-grade photos work best in the quiz).</p>
+        <div class="taxon-pick-row" role="group" aria-label="Current species pair">
+          <button type="button" class="taxon-pick" id="btnPickTaxonA" aria-haspopup="dialog">
+            <span class="taxon-pick-label" id="taxonPickLabelA"></span>
+          </button>
+          <button type="button" class="taxon-pick" id="btnPickTaxonB" aria-haspopup="dialog">
+            <span class="taxon-pick-label" id="taxonPickLabelB"></span>
+          </button>
+        </div>
+        <p class="presets-heading">Presets</p>
         <ul class="preset-list" id="presetList"></ul>
+      </div>
+    </dialog>
+
+    <dialog class="modal modal-nested" id="taxonSearchModal" aria-labelledby="taxonSearchTitle">
+      <div class="modal-inner">
+        <div class="modal-header">
+          <h2 id="taxonSearchTitle" class="modal-title">Replace species</h2>
+          <button
+            type="button"
+            class="icon-btn modal-close"
+            id="taxonSearchClose"
+            aria-label="Close search"
+          >
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+        </div>
+        <label class="taxon-search-field">
+          <span class="taxon-search-label">Search iNaturalist species</span>
+          <input
+            type="search"
+            id="taxonSearchInput"
+            class="taxon-search-input"
+            placeholder="e.g. golden-crowned kinglet"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </label>
+        <p class="taxon-search-hint hidden" id="taxonSearchHint" role="status"></p>
+        <ul class="taxon-search-results" id="taxonSearchResults" aria-live="polite"></ul>
       </div>
     </dialog>
 
