@@ -70,23 +70,68 @@
             </svg>
           </button>
         </div>
-        <dl class="stats-list">
+        <div class="stats-summary">
+          <p class="stats-accuracy-label">Total accuracy</p>
+          <p class="stats-accuracy-value" id="statTotalPct">—</p>
+        </div>
+
+        <dl class="stats-extra">
+          <div class="stat-row">
+            <dt>Current streak</dt>
+            <dd id="statCurrentStreak">—</dd>
+          </div>
           <div class="stat-row">
             <dt>Longest correct streak</dt>
             <dd id="statLongestStreak">—</dd>
           </div>
-          <div class="stat-row">
-            <dt>Total % correct</dt>
-            <dd id="statTotalPct">—</dd>
-          </div>
-          <div class="stat-row">
-            <dt>% correct (Canada Goose)</dt>
-            <dd id="statCanadaPct">—</dd>
-          </div>
-          <div class="stat-row">
-            <dt>% correct (Cackling Goose)</dt>
-            <dd id="statCacklingPct">—</dd>
-          </div>
+        </dl>
+
+        <dl class="stats-extra">
+          <table class="stats-matrix" aria-describedby="statsMatrixDesc">
+            <thead>
+              <tr>
+                <th class="stats-matrix-corner stats-matrix-label-cell" scope="col"></th>
+                <th class="stats-matrix-corner stats-matrix-label-cell" scope="col"></th>
+                <th class="stats-matrix-you-guessed" scope="colgroup" colspan="2">
+                  You guessed…
+                </th>
+              </tr>
+              <tr>
+                <th class="stats-matrix-corner stats-matrix-label-cell" scope="row"></th>
+                <th class="stats-matrix-corner stats-matrix-label-cell" scope="row"></th>
+                <th scope="row">Canada goose</th>
+                <th scope="row">Cackling goose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th class="stats-matrix-when stats-matrix-label-cell" scope="rowgroup" rowspan="2">
+                  <div class="stats-matrix-label-wrap">
+                    <span class="stats-matrix-label-rotated">When it was…</span>
+                  </div>
+                </th>
+                <th scope="row" class="stats-matrix-label-cell">
+                  <div class="stats-matrix-label-wrap">
+                    <span class="stats-matrix-label-rotated">Canada goose</span>
+                  </div>
+                </th>
+                <td id="statWhenCanadaGuessCanada" class="stats-matrix-cell">0</td>
+                <td id="statWhenCanadaGuessCackling" class="stats-matrix-cell">0</td>
+              </tr>
+              <tr>
+                <th scope="row" class="stats-matrix-label-cell">
+                  <div class="stats-matrix-label-wrap">
+                    <span class="stats-matrix-label-rotated">Cackling goose</span>
+                  </div>
+                </th>
+                <td id="statWhenCacklingGuessCanada" class="stats-matrix-cell">0</td>
+                <td id="statWhenCacklingGuessCackling" class="stats-matrix-cell">0</td>
+              </tr>
+            </tbody>
+          </table>
+          <p id="statsMatrixDesc" class="stats-matrix-hint">
+            Number of rounds for each combination of photo species and your guess.
+          </p>
         </dl>
       </div>
     </dialog>

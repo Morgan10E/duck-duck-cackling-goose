@@ -317,7 +317,7 @@ body {
   border-radius: calc(var(--radius) + 4px);
   background: var(--surface);
   color: var(--text);
-  max-width: min(420px, calc(100vw - 2rem));
+  max-width: min(480px, calc(100vw - 2rem));
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
 }
 
@@ -349,31 +349,182 @@ body {
   height: 40px;
 }
 
-.stats-list {
-  margin: 0;
+.stats-summary {
+  text-align: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--surface-elevated);
 }
 
-.stat-row {
+.stats-accuracy-label {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.stats-accuracy-value {
+  margin: 0.35rem 0 0;
+  font-size: 2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.stats-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.stats-matrix th,
+.stats-matrix td {
+  padding: 0.55rem 0.5rem;
+  text-align: center;
+  border: 1px solid var(--surface-elevated);
+  vertical-align: middle;
+}
+
+.stats-matrix thead th {
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg);
+}
+
+.stats-matrix-corner {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  vertical-align: bottom;
+}
+
+.stats-matrix-you-guessed {
+  text-transform: none;
+  font-style: italic;
+  color: var(--text) !important;
+  background: var(--surface-elevated) !important;
+}
+
+.stats-matrix-when {
+  font-style: italic;
+  color: var(--text) !important;
+  background: var(--surface-elevated) !important;
+}
+
+.stats-matrix-label-cell {
+  width: 2.75rem;
+  min-width: 2.75rem;
+  max-width: 2.75rem;
+  padding: 0 !important;
+  vertical-align: middle;
+  text-align: center;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Rotated text needs vertical room ≈ unrotated line length; row min-height enforces it. */
+.stats-matrix thead tr:nth-child(2) th {
+  min-height: 5.75rem;
+}
+
+.stats-matrix tbody th,
+.stats-matrix tbody td {
+  min-height: 6.75rem;
+}
+
+/* Clip transformed overflow; flex keeps the label centered in the cell. */
+.stats-matrix-label-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 0.3rem 0.12rem;
+}
+
+.stats-matrix thead .stats-matrix-label-wrap {
+  min-height: 5.15rem;
+}
+
+.stats-matrix tbody .stats-matrix-label-wrap {
+  min-height: 6.35rem;
+}
+
+.stats-matrix-label-rotated {
+  display: inline-block;
+  transform: rotate(-90deg);
+  transform-origin: center center;
+  white-space: nowrap;
+  line-height: 1.15;
+  font-size: 0.68rem;
+  font-weight: 600;
+  font-style: italic;
+  color: var(--text);
+}
+
+.stats-matrix thead .stats-matrix-label-rotated {
+  font-weight: 600;
+}
+
+.stats-matrix tbody .stats-matrix-label-cell {
+  background: var(--bg);
+}
+
+.stats-matrix tbody .stats-matrix-label-rotated {
+  font-style: normal;
+}
+
+.stats-matrix-cell {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 1rem;
+  background: var(--surface);
+}
+
+.stats-matrix-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.stats-extra {
+  margin: 1.15rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--surface-elevated);
+}
+
+.stats-extra .stat-row {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 0.5rem 1rem;
-  padding: 0.65rem 0;
-  border-bottom: 1px solid var(--surface-elevated);
+  padding: 0.5rem 0 0;
   align-items: baseline;
 }
 
-.stat-row:last-child {
-  border-bottom: none;
+.stats-extra .stat-row + .stat-row {
+  border-top: 1px solid var(--surface-elevated);
+  margin-top: 0.35rem;
+  padding-top: 0.65rem;
 }
 
-.stat-row dt {
+.stats-extra .stat-row dt {
   margin: 0;
   font-size: 0.88rem;
   color: var(--text-muted);
   font-weight: 500;
 }
 
-.stat-row dd {
+.stats-extra .stat-row dd {
   margin: 0;
   font-size: 1rem;
   font-weight: 700;

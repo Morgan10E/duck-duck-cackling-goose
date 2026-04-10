@@ -42,10 +42,13 @@ const el = {
   statsModal: document.getElementById("statsModal"),
   statsTrigger: document.querySelector(".stats-trigger"),
   statsClose: document.getElementById("statsClose"),
+  statCurrentStreak: document.getElementById("statCurrentStreak"),
   statLongestStreak: document.getElementById("statLongestStreak"),
   statTotalPct: document.getElementById("statTotalPct"),
-  statCanadaPct: document.getElementById("statCanadaPct"),
-  statCacklingPct: document.getElementById("statCacklingPct"),
+  statWhenCanadaGuessCanada: document.getElementById("statWhenCanadaGuessCanada"),
+  statWhenCanadaGuessCackling: document.getElementById("statWhenCanadaGuessCackling"),
+  statWhenCacklingGuessCanada: document.getElementById("statWhenCacklingGuessCanada"),
+  statWhenCacklingGuessCackling: document.getElementById("statWhenCacklingGuessCackling"),
 };
 
 /**
@@ -195,10 +198,17 @@ function formatStreak(n) {
 
 function refreshStatsUI() {
   const s = loadStats();
+  el.statCurrentStreak.textContent = formatStreak(s.currentStreak);
   el.statLongestStreak.textContent = formatStreak(s.longestStreak);
   el.statTotalPct.textContent = pct(s.totalCorrect, s.totalAttempts);
-  el.statCanadaPct.textContent = pct(s.canadaCorrect, s.canadaShown);
-  el.statCacklingPct.textContent = pct(s.cacklingCorrect, s.cacklingShown);
+
+  const canadaWrongCackling = Math.max(0, s.canadaShown - s.canadaCorrect);
+  const cacklingWrongCanada = Math.max(0, s.cacklingShown - s.cacklingCorrect);
+
+  el.statWhenCanadaGuessCanada.textContent = String(s.canadaCorrect);
+  el.statWhenCanadaGuessCackling.textContent = String(canadaWrongCackling);
+  el.statWhenCacklingGuessCanada.textContent = String(cacklingWrongCanada);
+  el.statWhenCacklingGuessCackling.textContent = String(s.cacklingCorrect);
 }
 
 function hideError() {
