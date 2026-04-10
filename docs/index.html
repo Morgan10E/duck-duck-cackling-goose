@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Duck Duck Cackling Goose</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <h1 class="title">Duck Duck Cackling Goose</h1>
+        <button
+          type="button"
+          class="icon-btn stats-trigger"
+          aria-label="Open statistics"
+          title="Statistics"
+        >
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M4 19h16v2H4v-2zm2-4h2v4H6v-4zm4-6h2v10h-2V9zm4 4h2v6h-2v-6zm4-8h2v14h-2V5z"
+              fill="currentColor"
+            />
+          </svg>
+        </button>
+      </header>
+
+      <main class="main">
+        <div class="card">
+          <div class="image-wrap">
+            <div class="image-placeholder" id="imagePlaceholder">
+              <span class="spinner" aria-hidden="true"></span>
+              <span class="placeholder-text">Loading goose…</span>
+            </div>
+            <img
+              id="gooseImage"
+              class="goose-image hidden"
+              alt=""
+              decoding="async"
+              referrerpolicy="no-referrer"
+            />
+            <div id="feedback" class="feedback hidden" aria-live="polite"></div>
+          </div>
+          <p class="credit" id="photoCredit"></p>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-cackling" id="btnCackling" disabled>
+            Cackling Goose
+          </button>
+          <button type="button" class="btn btn-canada" id="btnCanada" disabled>
+            Canada Goose
+          </button>
+        </div>
+
+        <p class="error hidden" id="errorMsg" role="alert"></p>
+      </main>
+    </div>
+
+    <dialog class="modal" id="statsModal" aria-labelledby="statsTitle">
+      <div class="modal-inner">
+        <div class="modal-header">
+          <h2 id="statsTitle" class="modal-title">Statistics</h2>
+          <button type="button" class="icon-btn modal-close" id="statsClose" aria-label="Close">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+        </div>
+        <dl class="stats-list">
+          <div class="stat-row">
+            <dt>Longest correct streak</dt>
+            <dd id="statLongestStreak">—</dd>
+          </div>
+          <div class="stat-row">
+            <dt>Total % correct</dt>
+            <dd id="statTotalPct">—</dd>
+          </div>
+          <div class="stat-row">
+            <dt>% correct (Canada Goose)</dt>
+            <dd id="statCanadaPct">—</dd>
+          </div>
+          <div class="stat-row">
+            <dt>% correct (Cackling Goose)</dt>
+            <dd id="statCacklingPct">—</dd>
+          </div>
+        </dl>
+      </div>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
