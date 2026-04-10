@@ -63,6 +63,13 @@ body {
   line-height: 1.2;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
 .icon-btn {
   flex-shrink: 0;
   display: inline-flex;
@@ -374,6 +381,19 @@ body {
   letter-spacing: -0.02em;
 }
 
+.stats-matrix-wrap {
+  margin: 1.15rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--surface-elevated);
+}
+
+.stats-matrix-corner-top {
+  border: none;
+  background: transparent !important;
+  padding: 0 !important;
+  vertical-align: bottom;
+}
+
 .stats-matrix {
   width: 100%;
   border-collapse: collapse;
@@ -412,6 +432,48 @@ body {
   font-style: italic;
   color: var(--text) !important;
   background: var(--surface-elevated) !important;
+}
+
+.stats-matrix-when-cell {
+  width: 2.75rem;
+  min-width: 2.75rem;
+  max-width: 2.75rem;
+  padding: 0 !important;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.stats-matrix-when-cell > .stats-matrix-label-wrap {
+  min-height: calc(5.75rem + 6.75rem + 6.75rem - 0.5rem);
+}
+
+.stats-matrix-row-axis-header {
+  min-width: 2.75rem;
+  max-width: 2.75rem;
+  width: 2.75rem;
+  padding: 0.35rem 0.15rem !important;
+  vertical-align: bottom;
+  background: var(--bg);
+}
+
+.stats-matrix-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.stats-matrix thead th#statMatrixColGuessA,
+.stats-matrix thead th#statMatrixColGuessB {
+  font-size: 0.72rem;
+  line-height: 1.2;
+  max-width: 6.5rem;
+  word-break: break-word;
 }
 
 .stats-matrix-label-cell {
@@ -530,6 +592,46 @@ body {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+.settings-lede {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.preset-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.preset-btn {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--surface-elevated);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.preset-btn:hover {
+  background: var(--surface-elevated);
+}
+
+.preset-btn--active {
+  border-color: var(--accent-canada);
+  background: rgba(74, 124, 199, 0.12);
 }
 
 .hidden {
