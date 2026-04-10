@@ -211,6 +211,26 @@ function showError(msg) {
   el.errorMsg.classList.remove("hidden");
 }
 
+/** @param {string | null | undefined} login */
+function setPhotoCredit(login) {
+  el.credit.replaceChildren();
+  const safe = String(login ?? "").trim();
+  if (!safe) return;
+
+  el.credit.append(document.createTextNode("Photo via iNaturalist · observer "));
+  if (safe === "unknown") {
+    el.credit.append(document.createTextNode(`@${safe}`));
+    return;
+  }
+  const a = document.createElement("a");
+  a.href = `https://www.inaturalist.org/observations?user_id=${encodeURIComponent(safe)}`;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.className = "credit-link";
+  a.textContent = `@${safe}`;
+  el.credit.append(a);
+}
+
 function setLoading(loading) {
   if (loading) {
     el.placeholder.classList.remove("hidden");
@@ -286,9 +306,7 @@ async function startRound() {
     const { imageUrl, login } = await fetchSequentialObservation(taxonId);
     roundActualCackling = actual;
 
-    el.credit.textContent = login
-      ? `Photo via iNaturalist · observer @${login}`
-      : "";
+    setPhotoCredit(login);
     el.img.alt =
       actual === "cackling" ? "Cackling Goose (quiz image)" : "Canada Goose (quiz image)";
 
@@ -319,7 +337,7 @@ async function startRound() {
     showError(`${msg} Retrying…`);
     el.placeholder.classList.remove("hidden");
     el.img.classList.add("hidden");
-    el.credit.textContent = "";
+    setPhotoCredit(null);
     el.btnCackling.disabled = true;
     el.btnCanada.disabled = true;
     window.setTimeout(() => {

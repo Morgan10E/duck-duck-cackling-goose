@@ -30,7 +30,14 @@ body {
 .app {
   max-width: 640px;
   margin: 0 auto;
-  padding: 1.25rem 1rem 2rem;
+  padding: 1.25rem 0 2rem;
+}
+
+@media (min-width: 640px) {
+  .app {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
 }
 
 .header {
@@ -39,6 +46,13 @@ body {
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1.25rem;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .header {
+    padding: 0;
+  }
 }
 
 .title {
@@ -81,19 +95,37 @@ body {
   gap: 1rem;
 }
 
-.card {
-  background: var(--surface);
-  border-radius: calc(var(--radius) + 4px);
-  padding: 0.75rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+.photo-area {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .photo-area {
+    background: var(--surface);
+    border-radius: calc(var(--radius) + 4px);
+    padding: 0.75rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  }
 }
 
 .image-wrap {
   position: relative;
-  border-radius: var(--radius);
+  border-radius: 0;
   overflow: hidden;
-  aspect-ratio: 4 / 3;
   background: var(--bg);
+}
+
+@media (max-width: 639px) {
+  .image-wrap:has(.image-placeholder:not(.hidden)) {
+    min-height: min(52vh, 420px);
+  }
+}
+
+@media (min-width: 640px) {
+  .image-wrap {
+    border-radius: var(--radius);
+    aspect-ratio: 4 / 3;
+  }
 }
 
 .image-placeholder {
@@ -132,10 +164,18 @@ body {
 
 .goose-image {
   width: 100%;
-  height: 100%;
+  height: auto;
+  max-height: 78vh;
   object-fit: contain;
   display: block;
   vertical-align: middle;
+}
+
+@media (min-width: 640px) {
+  .goose-image {
+    height: 100%;
+    max-height: none;
+  }
 }
 
 .goose-image.hidden {
@@ -180,16 +220,40 @@ body {
 
 .credit {
   margin: 0.6rem 0 0;
+  padding: 0 1rem;
   font-size: 0.72rem;
   color: var(--text-muted);
   text-align: center;
   min-height: 1.2em;
 }
 
+@media (min-width: 640px) {
+  .credit {
+    padding: 0;
+  }
+}
+
+.credit-link {
+  color: var(--accent-canada);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.credit-link:hover {
+  color: #6a9ae0;
+}
+
 .actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .actions {
+    padding: 0;
+  }
 }
 
 .btn {
@@ -227,13 +291,19 @@ body {
 }
 
 .error {
-  margin: 0;
+  margin: 0 1rem;
   padding: 0.75rem;
   border-radius: var(--radius);
   background: rgba(240, 113, 120, 0.15);
   color: var(--error);
   font-size: 0.9rem;
   text-align: center;
+}
+
+@media (min-width: 640px) {
+  .error {
+    margin: 0;
+  }
 }
 
 .error.hidden {
