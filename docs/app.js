@@ -118,6 +118,7 @@ const el = {
     feedback: getEl("feedback"),
     btnTaxonA: getEl("btnTaxonA"),
     btnTaxonB: getEl("btnTaxonB"),
+    btnSkipPhoto: getEl("btnSkipPhoto"),
     errorMsg: getEl("errorMsg"),
     statsModal: getEl("statsModal"),
     settingsModal: getEl("settingsModal"),
@@ -590,8 +591,10 @@ function setLoading(loading) {
         el.placeholder.classList.remove("hidden");
         el.img.classList.add("hidden");
     }
-    el.btnTaxonA.disabled = loading || roundBusy;
-    el.btnTaxonB.disabled = loading || roundBusy;
+    const canInteract = !loading && !roundBusy;
+    el.btnTaxonA.disabled = !canInteract;
+    el.btnTaxonB.disabled = !canInteract;
+    el.btnSkipPhoto.disabled = !canInteract;
 }
 function hideFeedback() {
     el.feedback.classList.add("hidden");
@@ -611,6 +614,7 @@ function applyGuess(guess) {
     roundBusy = true;
     el.btnTaxonA.disabled = true;
     el.btnTaxonB.disabled = true;
+    el.btnSkipPhoto.disabled = true;
     showFeedback(correct);
     const stats = getCurrentStats();
     stats.totalAttempts += 1;
@@ -661,6 +665,7 @@ async function startRound() {
             el.img.classList.remove("hidden");
             el.btnTaxonA.disabled = false;
             el.btnTaxonB.disabled = false;
+            el.btnSkipPhoto.disabled = false;
         };
         el.img.onload = reveal;
         el.img.onerror = () => {
@@ -684,11 +689,18 @@ async function startRound() {
         setPhotoCredit(null);
         el.btnTaxonA.disabled = true;
         el.btnTaxonB.disabled = true;
+        el.btnSkipPhoto.disabled = true;
         window.setTimeout(() => {
             hideError();
             void startRound();
         }, 2500);
     }
+}
+function skipBadPhoto() {
+    if (roundBusy || roundActual === null)
+        return;
+    hideFeedback();
+    void startRound();
 }
 function openStats() {
     applyTaxonLabels();
@@ -802,6 +814,7 @@ async function boot() {
 }
 el.btnTaxonA.addEventListener("click", () => applyGuess("a"));
 el.btnTaxonB.addEventListener("click", () => applyGuess("b"));
+el.btnSkipPhoto.addEventListener("click", skipBadPhoto);
 el.statsTrigger.addEventListener("click", openStats);
 el.statsClose.addEventListener("click", closeStats);
 el.settingsTrigger.addEventListener("click", openSettings);

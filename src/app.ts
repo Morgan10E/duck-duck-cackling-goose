@@ -187,6 +187,7 @@ const el = {
   feedback: getEl<HTMLDivElement>("feedback"),
   btnTaxonA: getEl<HTMLButtonElement>("btnTaxonA"),
   btnTaxonB: getEl<HTMLButtonElement>("btnTaxonB"),
+  btnSkipPhoto: getEl<HTMLButtonElement>("btnSkipPhoto"),
   errorMsg: getEl<HTMLParagraphElement>("errorMsg"),
   statsModal: getEl<HTMLDialogElement>("statsModal"),
   settingsModal: getEl<HTMLDialogElement>("settingsModal"),
@@ -702,8 +703,10 @@ function setLoading(loading: boolean): void {
     el.placeholder.classList.remove("hidden");
     el.img.classList.add("hidden");
   }
-  el.btnTaxonA.disabled = loading || roundBusy;
-  el.btnTaxonB.disabled = loading || roundBusy;
+  const canInteract = !loading && !roundBusy;
+  el.btnTaxonA.disabled = !canInteract;
+  el.btnTaxonB.disabled = !canInteract;
+  el.btnSkipPhoto.disabled = !canInteract;
 }
 
 function hideFeedback(): void {
@@ -726,6 +729,7 @@ function applyGuess(guess: TaxonSlot): void {
   roundBusy = true;
   el.btnTaxonA.disabled = true;
   el.btnTaxonB.disabled = true;
+  el.btnSkipPhoto.disabled = true;
   showFeedback(correct);
 
   const stats = getCurrentStats();
@@ -781,6 +785,7 @@ async function startRound(): Promise<void> {
       el.img.classList.remove("hidden");
       el.btnTaxonA.disabled = false;
       el.btnTaxonB.disabled = false;
+      el.btnSkipPhoto.disabled = false;
     };
 
     el.img.onload = reveal;
@@ -805,11 +810,18 @@ async function startRound(): Promise<void> {
     setPhotoCredit(null);
     el.btnTaxonA.disabled = true;
     el.btnTaxonB.disabled = true;
+    el.btnSkipPhoto.disabled = true;
     window.setTimeout(() => {
       hideError();
       void startRound();
     }, 2500);
   }
+}
+
+function skipBadPhoto(): void {
+  if (roundBusy || roundActual === null) return;
+  hideFeedback();
+  void startRound();
 }
 
 function openStats(): void {
@@ -934,6 +946,7 @@ async function boot(): Promise<void> {
 
 el.btnTaxonA.addEventListener("click", () => applyGuess("a"));
 el.btnTaxonB.addEventListener("click", () => applyGuess("b"));
+el.btnSkipPhoto.addEventListener("click", skipBadPhoto);
 
 el.statsTrigger.addEventListener("click", openStats);
 el.statsClose.addEventListener("click", closeStats);

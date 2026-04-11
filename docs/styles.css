@@ -257,8 +257,38 @@ body {
   padding: 0 1rem;
 }
 
+.actions-skip {
+  padding: 0 1rem;
+}
+
+.btn-skip {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px dashed var(--surface-elevated);
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: var(--text-muted);
+  background: transparent;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.btn-skip:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.btn-skip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 @media (min-width: 640px) {
-  .actions {
+  .actions,
+  .actions-skip {
     padding: 0;
   }
 }
