@@ -189,6 +189,89 @@ body {
   display: none;
 }
 
+.audio-stage {
+  position: relative;
+  width: 100%;
+  background: var(--surface-elevated);
+  border-radius: 0;
+}
+
+.audio-stage.hidden {
+  display: none;
+}
+
+.audio-visualizer-wrap {
+  width: 100%;
+  min-height: min(52vh, 420px);
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.audio-visualizer-wrap canvas,
+.quiz-audio-visualizer-canvas {
+  display: block;
+  width: 100% !important;
+  height: auto !important;
+  max-height: 78vh;
+}
+
+.quiz-audio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  overflow: hidden;
+}
+
+.audio-tap-play {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: max-content;
+  height: max-content;
+  padding: 0.85rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: #fff;
+  background: var(--accent-canada);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  z-index: 2;
+}
+
+.audio-tap-play:hover {
+  filter: brightness(1.06);
+}
+
+.audio-tap-play.hidden {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .audio-stage {
+    border-radius: var(--radius);
+  }
+
+  .audio-visualizer-wrap {
+    aspect-ratio: 4 / 3;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .audio-visualizer-wrap canvas,
+  .quiz-audio-visualizer-canvas {
+    max-height: none;
+    height: 100% !important;
+  }
+}
+
 .feedback {
   position: absolute;
   inset: 0;
@@ -686,6 +769,55 @@ body {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+.media-mode {
+  margin-bottom: 0.65rem;
+}
+
+.media-mode-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.45rem;
+}
+
+.media-mode-segment {
+  display: flex;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--surface-elevated);
+}
+
+.media-mode-btn {
+  flex: 1;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  background: var(--bg);
+  color: var(--text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.media-mode-btn:hover {
+  color: var(--text);
+}
+
+.media-mode-btn[aria-pressed="true"] {
+  background: var(--surface-elevated);
+  color: var(--text);
+}
+
+.media-mode-hint {
+  margin: 0 0 1rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.45;
 }
 
 .presets-heading {

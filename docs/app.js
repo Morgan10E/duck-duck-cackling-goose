@@ -148,14 +148,127 @@ const el = {
     taxonSearchResults: getEl("taxonSearchResults"),
     taxonSearchClose: getEl("taxonSearchClose"),
     taxonSearchHint: getEl("taxonSearchHint"),
+    placeholderText: getEl("placeholderText"),
+    audioStage: getEl("audioStage"),
+    audioVisualizerWrap: getEl("audioVisualizerWrap"),
+    quizAudio: getEl("quizAudio"),
+    audioTapPlay: getEl("audioTapPlay"),
+    btnMediaPhoto: getEl("btnMediaPhoto"),
+    btnMediaAudio: getEl("btnMediaAudio"),
 };
 let roundActual = null;
 let roundBusy = false;
 let taxonSearchTarget = null;
 let taxonSearchDebounceTimer = null;
+let quizVisualizerCleanup = null;
+/**
+ * iNaturalist sound URLs do not send Access-Control-Allow-Origin, so we cannot use
+ * Web Audio (e.g. audiomotion-analyzer) on the media element without muting playback.
+ * This canvas visualizer reacts to play/pause and time only — no CORS.
+ */
+function destroyQuizAudioVisualizer() {
+    if (quizVisualizerCleanup) {
+        quizVisualizerCleanup();
+        quizVisualizerCleanup = null;
+    }
+    el.audioVisualizerWrap.replaceChildren();
+}
+function startQuizAudioVisualizer() {
+    destroyQuizAudioVisualizer();
+    const canvas = document.createElement("canvas");
+    canvas.className = "quiz-audio-visualizer-canvas";
+    canvas.setAttribute("role", "img");
+    canvas.setAttribute("aria-label", "Audio activity");
+    el.audioVisualizerWrap.appendChild(canvas);
+    const ctx = canvas.getContext("2d");
+    if (!ctx)
+        return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    let rafId = 0;
+    let t = 0;
+    const resize = () => {
+        const rect = el.audioVisualizerWrap.getBoundingClientRect();
+        const w = Math.max(280, Math.floor(rect.width));
+        const h = Math.max(180, Math.floor(rect.height));
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        canvas.style.width = `${w}px`;
+        canvas.style.height = `${h}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resize();
+    const ro = new ResizeObserver(() => resize());
+    ro.observe(el.audioVisualizerWrap);
+    const BAR_COUNT = 56;
+    const tick = () => {
+        rafId = window.requestAnimationFrame(tick);
+        t += 0.048;
+        const w = canvas.width / dpr;
+        const h = canvas.height / dpr;
+        const playing = !el.quizAudio.paused && !el.quizAudio.ended;
+        const beat = playing ? el.quizAudio.currentTime * 8 : 0;
+        ctx.fillStyle = "#141c28";
+        ctx.fillRect(0, 0, w, h);
+        const barW = w / BAR_COUNT;
+        const gap = barW * 0.12;
+        const effW = Math.max(1, barW - gap);
+        for (let i = 0; i < BAR_COUNT; i++) {
+            const phase = t * (playing ? 2.4 : 0.35) + i * 0.12 + beat * 0.02;
+            const base = playing ? 0.12 : 0.06;
+            const pulse = playing
+                ? 0.62 *
+                    (0.45 + 0.55 * Math.sin(phase)) *
+                    (0.65 + 0.35 * Math.sin(t * 3.1 + i * 0.35))
+                : 0.04;
+            const barH = Math.min(h * 0.9, h * (base + pulse));
+            const x = i * barW + gap / 2;
+            const y = h - barH;
+            const g = ctx.createLinearGradient(x, y, x, h);
+            g.addColorStop(0, "#7ec8e3");
+            g.addColorStop(0.55, "#4a9aba");
+            g.addColorStop(1, "#2a5f78");
+            ctx.fillStyle = g;
+            ctx.fillRect(x, y, effW, barH);
+        }
+    };
+    rafId = window.requestAnimationFrame(tick);
+    quizVisualizerCleanup = () => {
+        window.cancelAnimationFrame(rafId);
+        ro.disconnect();
+    };
+}
+function stopQuizAudio() {
+    el.quizAudio.pause();
+    el.quizAudio.removeAttribute("src");
+    el.quizAudio.crossOrigin = null;
+    el.quizAudio.load();
+}
+function disposeQuizAudioRound() {
+    stopQuizAudio();
+    destroyQuizAudioVisualizer();
+    el.audioStage.classList.add("hidden");
+    el.audioStage.setAttribute("aria-hidden", "true");
+    el.audioTapPlay.classList.add("hidden");
+}
+async function tryPlayQuizAudio() {
+    el.audioTapPlay.classList.add("hidden");
+    try {
+        await el.quizAudio.play();
+    }
+    catch {
+        el.audioTapPlay.classList.remove("hidden");
+    }
+}
 function buildSearchParams(overrides) {
     return new URLSearchParams({
         photos: "true",
+        quality_grade: "research",
+        ...overrides,
+    });
+}
+function buildSoundSearchParams(overrides) {
+    return new URLSearchParams({
+        sounds: "true",
         quality_grade: "research",
         ...overrides,
     });
@@ -278,6 +391,48 @@ async function fetchObservationForRandomCutoff(taxonId) {
     }
     throw new Error("Could not load a photo for this species. Try again.");
 }
+async function fetchObservationWithSoundForRandomCutoff(taxonId) {
+    const now = Date.now();
+    const cutoff = new Date(now - Math.random() * OBS_RANDOM_WINDOW_MS);
+    const windowStart = new Date(now - OBS_RANDOM_WINDOW_MS);
+    let d1 = isoDateUTC(windowStart);
+    let d2 = isoDateUTC(cutoff);
+    if (d1 > d2) {
+        const swap = d1;
+        d1 = d2;
+        d2 = swap;
+    }
+    const cutoffMs = cutoff.getTime();
+    for (let page = 1; page <= INAT_DATE_FETCH_MAX_PAGES; page++) {
+        const data = await fetchInatJson(buildSoundSearchParams({
+            taxon_id: String(taxonId),
+            per_page: String(INAT_DATE_FETCH_PER_PAGE),
+            page: String(page),
+            d1,
+            d2,
+            order_by: "observed_on",
+            order: "desc",
+        }));
+        const list = data.results ?? [];
+        for (const obs of list) {
+            if (!obs || obs.taxon?.id !== taxonId)
+                continue;
+            if (!Array.isArray(obs.sounds) || obs.sounds.length === 0)
+                continue;
+            const rawSound = obs.sounds[0].file_url;
+            if (!rawSound)
+                continue;
+            const obsMs = observedAtMs(obs);
+            if (!Number.isFinite(obsMs) || obsMs > cutoffMs)
+                continue;
+            const login = obs.user?.login ?? "unknown";
+            return { soundUrl: rawSound, login, observation: obs };
+        }
+        if (list.length < INAT_DATE_FETCH_PER_PAGE)
+            break;
+    }
+    throw new Error("Could not load audio for this species. Try again.");
+}
 function readCookie(name) {
     const prefix = `${name}=`;
     const parts = document.cookie.split(";").map((c) => c.trim());
@@ -355,7 +510,8 @@ function loadPersisted() {
                     statsByPairKey[key] = migrated;
                 }
             }
-            return { activePair, statsByPairKey };
+            const mediaMode = parsed.mediaMode === "audio" ? "audio" : "photo";
+            return { activePair, statsByPairKey, mediaMode };
         }
     }
     catch {
@@ -365,7 +521,7 @@ function loadPersisted() {
     if (migrated) {
         statsByPairKey[pairKey(DEFAULT_PAIR)] = migrated;
     }
-    return { activePair: clonePair(DEFAULT_PAIR), statsByPairKey };
+    return { activePair: clonePair(DEFAULT_PAIR), statsByPairKey, mediaMode: "photo" };
 }
 function savePersisted(state) {
     try {
@@ -377,6 +533,23 @@ function savePersisted(state) {
 }
 function getActivePair() {
     return loadPersisted().activePair;
+}
+function getMediaMode() {
+    return loadPersisted().mediaMode;
+}
+function setMediaMode(mode) {
+    if (getMediaMode() === mode)
+        return;
+    const state = loadPersisted();
+    state.mediaMode = mode;
+    savePersisted(state);
+    syncSettingsMediaToggle();
+    void startRound();
+}
+function syncSettingsMediaToggle() {
+    const mode = getMediaMode();
+    el.btnMediaPhoto.setAttribute("aria-pressed", mode === "photo" ? "true" : "false");
+    el.btnMediaAudio.setAttribute("aria-pressed", mode === "audio" ? "true" : "false");
 }
 function getCurrentStats() {
     const { activePair, statsByPairKey } = loadPersisted();
@@ -568,12 +741,13 @@ function showError(msg) {
     el.errorMsg.textContent = msg;
     el.errorMsg.classList.remove("hidden");
 }
-function setPhotoCredit(login) {
+function setObservationCredit(login, kind) {
     el.credit.replaceChildren();
     const safe = String(login ?? "").trim();
     if (!safe)
         return;
-    el.credit.append(document.createTextNode("Photo via iNaturalist · observer "));
+    const prefix = kind === "photo" ? "Photo via iNaturalist · observer " : "Recording via iNaturalist · observer ";
+    el.credit.append(document.createTextNode(prefix));
     if (safe === "unknown") {
         el.credit.append(document.createTextNode(`@${safe}`));
         return;
@@ -587,9 +761,15 @@ function setPhotoCredit(login) {
     el.credit.append(a);
 }
 function setLoading(loading) {
+    const mode = getMediaMode();
     if (loading) {
         el.placeholder.classList.remove("hidden");
+        el.placeholderText.textContent = mode === "photo" ? "Loading photo…" : "Loading recording…";
         el.img.classList.add("hidden");
+        if (mode === "audio") {
+            el.audioStage.classList.add("hidden");
+            el.audioStage.setAttribute("aria-hidden", "true");
+        }
     }
     const canInteract = !loading && !roundBusy;
     el.btnTaxonA.disabled = !canInteract;
@@ -615,6 +795,7 @@ function applyGuess(guess) {
     el.btnTaxonA.disabled = true;
     el.btnTaxonB.disabled = true;
     el.btnSkipPhoto.disabled = true;
+    el.quizAudio.pause();
     showFeedback(correct);
     const stats = getCurrentStats();
     stats.totalAttempts += 1;
@@ -650,35 +831,73 @@ async function startRound() {
     hideError();
     hideFeedback();
     roundActual = null;
+    disposeQuizAudioRound();
     setLoading(true);
     const pair = getActivePair();
     const actual = Math.random() < 0.5 ? "a" : "b";
     const taxonId = actual === "a" ? pair.idA : pair.idB;
+    const mode = getMediaMode();
     try {
-        const { imageUrl, login } = await fetchObservationForRandomCutoff(taxonId);
-        roundActual = actual;
-        setPhotoCredit(login);
-        const label = actual === "a" ? pair.labelA : pair.labelB;
-        el.img.alt = `${label} (quiz image)`;
-        const reveal = () => {
-            el.placeholder.classList.add("hidden");
-            el.img.classList.remove("hidden");
-            el.btnTaxonA.disabled = false;
-            el.btnTaxonB.disabled = false;
-            el.btnSkipPhoto.disabled = false;
-        };
-        el.img.onload = reveal;
-        el.img.onerror = () => {
-            roundActual = null;
-            showError("Image failed to load. Trying another…");
-            el.placeholder.classList.remove("hidden");
+        if (mode === "photo") {
+            el.audioStage.classList.add("hidden");
+            const { imageUrl, login } = await fetchObservationForRandomCutoff(taxonId);
+            roundActual = actual;
+            setObservationCredit(login, "photo");
+            const label = actual === "a" ? pair.labelA : pair.labelB;
+            el.img.alt = `${label} (quiz image)`;
+            const reveal = () => {
+                el.placeholder.classList.add("hidden");
+                el.img.classList.remove("hidden");
+                el.btnTaxonA.disabled = false;
+                el.btnTaxonB.disabled = false;
+                el.btnSkipPhoto.disabled = false;
+            };
+            el.img.onload = reveal;
+            el.img.onerror = () => {
+                roundActual = null;
+                showError("Image failed to load. Trying another…");
+                el.placeholder.classList.remove("hidden");
+                el.img.classList.add("hidden");
+                window.setTimeout(() => void startRound(), 800);
+            };
+            el.img.removeAttribute("src");
+            el.img.src = imageUrl;
+            if (typeof el.img.decode === "function") {
+                el.img.decode().then(reveal).catch(() => { });
+            }
+        }
+        else {
             el.img.classList.add("hidden");
-            window.setTimeout(() => void startRound(), 800);
-        };
-        el.img.removeAttribute("src");
-        el.img.src = imageUrl;
-        if (typeof el.img.decode === "function") {
-            el.img.decode().then(reveal).catch(() => { });
+            el.img.removeAttribute("src");
+            const { soundUrl, login } = await fetchObservationWithSoundForRandomCutoff(taxonId);
+            roundActual = actual;
+            setObservationCredit(login, "audio");
+            let revealed = false;
+            const revealAudio = () => {
+                if (revealed)
+                    return;
+                revealed = true;
+                el.placeholder.classList.add("hidden");
+                el.audioStage.classList.remove("hidden");
+                el.audioStage.setAttribute("aria-hidden", "false");
+                el.btnTaxonA.disabled = false;
+                el.btnTaxonB.disabled = false;
+                el.btnSkipPhoto.disabled = false;
+                startQuizAudioVisualizer();
+                void tryPlayQuizAudio();
+            };
+            el.quizAudio.pause();
+            el.quizAudio.crossOrigin = null;
+            el.quizAudio.addEventListener("error", () => {
+                roundActual = null;
+                disposeQuizAudioRound();
+                showError("Audio failed to load. Trying another…");
+                window.setTimeout(() => void startRound(), 800);
+            }, { once: true });
+            el.quizAudio.addEventListener("canplaythrough", revealAudio, { once: true });
+            el.quizAudio.addEventListener("canplay", revealAudio, { once: true });
+            el.quizAudio.src = soundUrl;
+            el.quizAudio.load();
         }
     }
     catch (e) {
@@ -686,7 +905,8 @@ async function startRound() {
         showError(`${msg} Retrying…`);
         el.placeholder.classList.remove("hidden");
         el.img.classList.add("hidden");
-        setPhotoCredit(null);
+        disposeQuizAudioRound();
+        setObservationCredit(null, mode === "photo" ? "photo" : "audio");
         el.btnTaxonA.disabled = true;
         el.btnTaxonB.disabled = true;
         el.btnSkipPhoto.disabled = true;
@@ -699,6 +919,7 @@ async function startRound() {
 function skipBadPhoto() {
     if (roundBusy || roundActual === null)
         return;
+    el.quizAudio.pause();
     hideFeedback();
     void startRound();
 }
@@ -711,6 +932,7 @@ function closeStats() {
     el.statsModal.close();
 }
 function openSettings() {
+    syncSettingsMediaToggle();
     void refreshTaxonPickerVisuals();
     el.settingsModal.showModal();
 }
@@ -815,6 +1037,9 @@ async function boot() {
 el.btnTaxonA.addEventListener("click", () => applyGuess("a"));
 el.btnTaxonB.addEventListener("click", () => applyGuess("b"));
 el.btnSkipPhoto.addEventListener("click", skipBadPhoto);
+el.btnMediaPhoto.addEventListener("click", () => setMediaMode("photo"));
+el.btnMediaAudio.addEventListener("click", () => setMediaMode("audio"));
+el.audioTapPlay.addEventListener("click", () => void tryPlayQuizAudio());
 el.statsTrigger.addEventListener("click", openStats);
 el.statsClose.addEventListener("click", closeStats);
 el.settingsTrigger.addEventListener("click", openSettings);

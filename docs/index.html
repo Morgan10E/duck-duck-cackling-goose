@@ -47,7 +47,14 @@
           <div class="image-wrap">
             <div class="image-placeholder" id="imagePlaceholder">
               <span class="spinner" aria-hidden="true"></span>
-              <span class="placeholder-text">Loading photo…</span>
+              <span class="placeholder-text" id="placeholderText">Loading photo…</span>
+            </div>
+            <div class="audio-stage hidden" id="audioStage" aria-hidden="true">
+              <div class="audio-visualizer-wrap" id="audioVisualizerWrap"></div>
+              <audio id="quizAudio" class="quiz-audio" preload="auto" playsinline></audio>
+              <button type="button" class="audio-tap-play hidden" id="audioTapPlay">
+                Tap to play sound
+              </button>
             </div>
             <img
               id="gooseImage"
@@ -183,6 +190,20 @@
             <span class="taxon-pick-label" id="taxonPickLabelB"></span>
           </button>
         </div>
+        <div class="media-mode" role="group" aria-labelledby="mediaModeLabel">
+          <div class="media-mode-label" id="mediaModeLabel">Stimulus</div>
+          <div class="media-mode-segment">
+            <button type="button" class="media-mode-btn" id="btnMediaPhoto" aria-pressed="true">
+              Photo
+            </button>
+            <button type="button" class="media-mode-btn" id="btnMediaAudio" aria-pressed="false">
+              Audio
+            </button>
+          </div>
+        </div>
+        <p class="media-mode-hint">
+          Random photo or sound recording from iNaturalist for each round.
+        </p>
         <p class="presets-heading">Some fun challenges...</p>
         <ul class="preset-list" id="presetList"></ul>
       </div>
@@ -222,6 +243,6 @@
       </div>
     </dialog>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
   </body>
 </html>
