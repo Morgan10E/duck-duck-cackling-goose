@@ -124,9 +124,12 @@
 
         <div class="stats-matrix-wrap">
           <table class="stats-matrix" aria-describedby="statsMatrixDesc">
+            <col>
+            <col>
+            <colgroup span="2"></colgroup>
             <thead>
               <tr>
-                <th class="stats-matrix-corner-top" colspan="2" rowspan="2" scope="colgroup"></th>
+                <td class="stats-matrix-corner-top" colspan="2" rowspan="2"></td>
                 <th class="stats-matrix-you-guessed" scope="colgroup" colspan="2">
                   You guessed…
                 </th>
@@ -138,7 +141,7 @@
             </thead>
             <tbody>
               <tr>
-                <th class="stats-matrix-when stats-matrix-when-cell" rowspan="3" scope="row">
+                <th class="stats-matrix-when stats-matrix-when-cell" rowspan="3" scope="rowgroup">
                   <div class="stats-matrix-label-wrap">
                     <span class="stats-matrix-label-rotated">When it was…</span>
                   </div>
@@ -163,7 +166,7 @@
             </tbody>
           </table>
           <p id="statsMatrixDesc" class="stats-matrix-hint">
-            Number of rounds for each combination of photo species and your guess.
+            Number of rounds for each combination of taxon pair and your guess.
           </p>
         </div>
       </div>
