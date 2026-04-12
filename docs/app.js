@@ -8,6 +8,9 @@ const INAT_DATE_FETCH_MAX_PAGES = 5;
 const STORAGE_KEY = "ddcg_v2";
 const LEGACY_STATS_COOKIE = "ddcg_stats";
 const FEEDBACK_MS = 450;
+/** Fully loaded photo rounds to keep ready ahead of the player (photo mode). */
+const PHOTO_PREFETCH_QUEUE_MAX = 3;
+const PHOTO_PREFETCH_RETRY_MS = 400;
 /** URL query keys for deep-linking a pair (e.g. `?taxonA=59220&taxonB=7089`). Short aliases `a` / `b` also work. */
 const URL_PARAM_TAXON_A = "taxonA";
 const URL_PARAM_TAXON_B = "taxonB";
@@ -158,6 +161,12 @@ const el = {
 };
 let roundActual = null;
 let roundBusy = false;
+let photoRoundPrefetchQueue = [];
+/** Bumped to abandon in-flight prefetch work and clear the queue. */
+let photoPrefetchGen = 0;
+let photoPrefetchPumpRunning = false;
+/** Superseded `startRound()` runs bail out after awaits. */
+let startRoundEpoch = 0;
 let taxonSearchTarget = null;
 let taxonSearchDebounceTimer = null;
 let quizVisualizerCleanup = null;
@@ -786,6 +795,139 @@ function showFeedback(correct) {
     el.feedback.classList.remove("hidden", "correct", "wrong");
     el.feedback.classList.add(correct ? "correct" : "wrong");
 }
+function invalidatePhotoPrefetchQueue() {
+    photoPrefetchGen++;
+    photoRoundPrefetchQueue = [];
+}
+function ensurePhotoPrefetchQueueMatchesPair(pair) {
+    const pk = pairKey(pair);
+    if (photoRoundPrefetchQueue.length > 0 && photoRoundPrefetchQueue.some((r) => r.pairKey !== pk)) {
+        invalidatePhotoPrefetchQueue();
+    }
+}
+function peekQueuedPhotoRound(pair) {
+    const pk = pairKey(pair);
+    ensurePhotoPrefetchQueueMatchesPair(pair);
+    const head = photoRoundPrefetchQueue[0];
+    if (!head || head.pairKey !== pk || !head.img.complete)
+        return null;
+    return head;
+}
+async function tryAddOnePhotoToPrefetchQueue() {
+    if (getMediaMode() !== "photo")
+        return false;
+    if (photoRoundPrefetchQueue.length >= PHOTO_PREFETCH_QUEUE_MAX)
+        return false;
+    const genSnapshot = photoPrefetchGen;
+    const pair = getActivePair();
+    const capturedPairKey = pairKey(pair);
+    const actual = Math.random() < 0.5 ? "a" : "b";
+    const taxonId = actual === "a" ? pair.idA : pair.idB;
+    try {
+        const { imageUrl, login } = await fetchObservationForRandomCutoff(taxonId);
+        if (genSnapshot !== photoPrefetchGen)
+            return false;
+        if (getMediaMode() !== "photo")
+            return false;
+        if (pairKey(getActivePair()) !== capturedPairKey)
+            return false;
+        const img = new Image();
+        const ok = await new Promise((resolve) => {
+            img.onload = () => resolve(true);
+            img.onerror = () => resolve(false);
+            img.src = imageUrl;
+        });
+        if (!ok)
+            return false;
+        if (genSnapshot !== photoPrefetchGen)
+            return false;
+        if (getMediaMode() !== "photo")
+            return false;
+        if (pairKey(getActivePair()) !== capturedPairKey)
+            return false;
+        if (photoRoundPrefetchQueue.length >= PHOTO_PREFETCH_QUEUE_MAX)
+            return false;
+        photoRoundPrefetchQueue.push({
+            pairKey: capturedPairKey,
+            actual,
+            imageUrl,
+            login,
+            img,
+        });
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+function schedulePhotoPrefetchPump() {
+    if (getMediaMode() !== "photo")
+        return;
+    if (photoPrefetchPumpRunning)
+        return;
+    photoPrefetchPumpRunning = true;
+    void (async () => {
+        try {
+            while (getMediaMode() === "photo" &&
+                photoRoundPrefetchQueue.length < PHOTO_PREFETCH_QUEUE_MAX) {
+                const genBefore = photoPrefetchGen;
+                const lenBefore = photoRoundPrefetchQueue.length;
+                await tryAddOnePhotoToPrefetchQueue();
+                if (photoPrefetchGen !== genBefore)
+                    break;
+                if (photoRoundPrefetchQueue.length >= PHOTO_PREFETCH_QUEUE_MAX)
+                    break;
+                if (photoRoundPrefetchQueue.length === lenBefore) {
+                    await new Promise((resolve) => {
+                        window.setTimeout(resolve, PHOTO_PREFETCH_RETRY_MS);
+                    });
+                    if (photoPrefetchGen !== genBefore)
+                        break;
+                }
+            }
+        }
+        finally {
+            photoPrefetchPumpRunning = false;
+        }
+        if (getMediaMode() === "photo" && photoRoundPrefetchQueue.length < PHOTO_PREFETCH_QUEUE_MAX) {
+            schedulePhotoPrefetchPump();
+        }
+    })();
+}
+function bindPhotoQuizRound(pair, actual, imageUrl, login) {
+    roundActual = actual;
+    setObservationCredit(login, "photo");
+    const label = actual === "a" ? pair.labelA : pair.labelB;
+    el.img.alt = `${label} (quiz image)`;
+    let revealed = false;
+    const reveal = () => {
+        if (revealed)
+            return;
+        revealed = true;
+        el.placeholder.classList.add("hidden");
+        el.img.classList.remove("hidden");
+        el.btnTaxonA.disabled = false;
+        el.btnTaxonB.disabled = false;
+        el.btnSkipPhoto.disabled = false;
+        schedulePhotoPrefetchPump();
+    };
+    el.img.onload = reveal;
+    el.img.onerror = () => {
+        roundActual = null;
+        showError("Image failed to load. Trying another…");
+        el.placeholder.classList.remove("hidden");
+        el.img.classList.add("hidden");
+        window.setTimeout(() => void startRound(), 800);
+    };
+    // Avoid clearing `src` first — that flashes empty while the next image loads; swap URL in one step.
+    el.img.src = imageUrl;
+    if (el.img.complete) {
+        reveal();
+    }
+    else if (typeof el.img.decode === "function") {
+        el.img.decode().then(reveal).catch(() => { });
+    }
+}
 function applyGuess(guess) {
     if (roundBusy || roundActual === null)
         return;
@@ -828,48 +970,46 @@ function applyGuess(guess) {
     }, FEEDBACK_MS);
 }
 async function startRound() {
+    const epoch = ++startRoundEpoch;
     hideError();
     hideFeedback();
     roundActual = null;
     disposeQuizAudioRound();
-    setLoading(true);
     const pair = getActivePair();
+    const mode = getMediaMode();
+    if (mode !== "photo") {
+        invalidatePhotoPrefetchQueue();
+    }
+    if (mode === "photo") {
+        const queued = peekQueuedPhotoRound(pair);
+        if (queued) {
+            if (epoch !== startRoundEpoch)
+                return;
+            photoRoundPrefetchQueue.shift();
+            el.audioStage.classList.add("hidden");
+            bindPhotoQuizRound(pair, queued.actual, queued.imageUrl, queued.login);
+            return;
+        }
+    }
+    if (epoch !== startRoundEpoch)
+        return;
+    setLoading(true);
     const actual = Math.random() < 0.5 ? "a" : "b";
     const taxonId = actual === "a" ? pair.idA : pair.idB;
-    const mode = getMediaMode();
     try {
         if (mode === "photo") {
             el.audioStage.classList.add("hidden");
             const { imageUrl, login } = await fetchObservationForRandomCutoff(taxonId);
-            roundActual = actual;
-            setObservationCredit(login, "photo");
-            const label = actual === "a" ? pair.labelA : pair.labelB;
-            el.img.alt = `${label} (quiz image)`;
-            const reveal = () => {
-                el.placeholder.classList.add("hidden");
-                el.img.classList.remove("hidden");
-                el.btnTaxonA.disabled = false;
-                el.btnTaxonB.disabled = false;
-                el.btnSkipPhoto.disabled = false;
-            };
-            el.img.onload = reveal;
-            el.img.onerror = () => {
-                roundActual = null;
-                showError("Image failed to load. Trying another…");
-                el.placeholder.classList.remove("hidden");
-                el.img.classList.add("hidden");
-                window.setTimeout(() => void startRound(), 800);
-            };
-            el.img.removeAttribute("src");
-            el.img.src = imageUrl;
-            if (typeof el.img.decode === "function") {
-                el.img.decode().then(reveal).catch(() => { });
-            }
+            if (epoch !== startRoundEpoch)
+                return;
+            bindPhotoQuizRound(pair, actual, imageUrl, login);
         }
         else {
             el.img.classList.add("hidden");
             el.img.removeAttribute("src");
             const { soundUrl, login } = await fetchObservationWithSoundForRandomCutoff(taxonId);
+            if (epoch !== startRoundEpoch)
+                return;
             roundActual = actual;
             setObservationCredit(login, "audio");
             let revealed = false;
@@ -1033,6 +1173,7 @@ async function boot() {
     syncUrlToPair(getActivePair());
     refreshStatsUI();
     void startRound();
+    schedulePhotoPrefetchPump();
 }
 el.btnTaxonA.addEventListener("click", () => applyGuess("a"));
 el.btnTaxonB.addEventListener("click", () => applyGuess("b"));
