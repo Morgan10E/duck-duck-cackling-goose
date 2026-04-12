@@ -216,7 +216,7 @@ function startQuizAudioVisualizer() {
         const h = canvas.height / dpr;
         const playing = !el.quizAudio.paused && !el.quizAudio.ended;
         const beat = playing ? el.quizAudio.currentTime * 8 : 0;
-        ctx.fillStyle = "#141c28";
+        ctx.fillStyle = "#e8f3eb";
         ctx.fillRect(0, 0, w, h);
         const barW = w / BAR_COUNT;
         const gap = barW * 0.12;
@@ -233,9 +233,9 @@ function startQuizAudioVisualizer() {
             const x = i * barW + gap / 2;
             const y = h - barH;
             const g = ctx.createLinearGradient(x, y, x, h);
-            g.addColorStop(0, "#7ec8e3");
-            g.addColorStop(0.55, "#4a9aba");
-            g.addColorStop(1, "#2a5f78");
+            g.addColorStop(0, "#7dd4a3");
+            g.addColorStop(0.55, "#3da76e");
+            g.addColorStop(1, "#1f6b4a");
             ctx.fillStyle = g;
             ctx.fillRect(x, y, effW, barH);
         }

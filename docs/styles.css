@@ -1,15 +1,18 @@
 :root {
-  --bg: #0f1419;
-  --surface: #1a2332;
-  --surface-elevated: #243044;
-  --text: #e8ecf1;
-  --text-muted: #8b9aab;
-  --accent-cackling: #3d9a6e;
-  --accent-canada: #4a7cc7;
-  --success: #3dd68c;
-  --error: #f07178;
+  --bg: #f4faf6;
+  --surface: #ffffff;
+  --surface-elevated: #e2f0e6;
+  --text: #153524;
+  --text-muted: #4a6b56;
+  --accent-cackling: #2d8f52;
+  --accent-canada: #1f6b4a;
+  --success: #0d8f50;
+  --error: #c23d4a;
   --radius: 12px;
   --font: "Segoe UI", system-ui, sans-serif;
+  --shadow-soft: rgba(21, 53, 36, 0.08);
+  --shadow-medium: rgba(21, 53, 36, 0.12);
+  --shadow-strong: rgba(21, 53, 36, 0.18);
 }
 
 *,
@@ -22,7 +25,8 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: var(--font);
-  background: radial-gradient(ellipse 120% 80% at 50% -20%, #1e3a4f 0%, var(--bg) 55%);
+  color-scheme: light;
+  background: radial-gradient(ellipse 120% 90% at 50% -15%, #d8efe0 0%, var(--bg) 52%);
   color: var(--text);
   line-height: 1.5;
 }
@@ -111,7 +115,7 @@ body {
     background: var(--surface);
     border-radius: calc(var(--radius) + 4px);
     padding: 0.75rem;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 8px 32px var(--shadow-medium);
   }
 }
 
@@ -154,7 +158,7 @@ body {
   width: 36px;
   height: 36px;
   border: 3px solid var(--surface-elevated);
-  border-top-color: var(--accent-canada);
+  border-top-color: var(--accent-cackling);
   border-radius: 50%;
   animation: spin 0.75s linear infinite;
 }
@@ -242,7 +246,7 @@ body {
   cursor: pointer;
   color: #fff;
   background: var(--accent-canada);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 20px var(--shadow-medium);
   z-index: 2;
 }
 
@@ -281,7 +285,7 @@ body {
   pointer-events: none;
   font-size: 5rem;
   font-weight: 800;
-  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 12px var(--shadow-strong);
   animation: pop 0.35s ease-out;
 }
 
@@ -330,7 +334,7 @@ body {
 }
 
 .credit-link:hover {
-  color: #6a9ae0;
+  color: #0f5a32;
 }
 
 .actions {
@@ -361,7 +365,7 @@ body {
 .btn-skip:hover:not(:disabled) {
   color: var(--text);
   border-color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(45, 143, 82, 0.08);
 }
 
 .btn-skip:disabled {
@@ -399,11 +403,11 @@ body {
 }
 
 .btn-cackling:not(:disabled) {
-  background: linear-gradient(160deg, var(--accent-cackling), #2d7a55);
+  background: linear-gradient(160deg, var(--accent-cackling), #1f6e3d);
 }
 
 .btn-canada:not(:disabled) {
-  background: linear-gradient(160deg, var(--accent-canada), #355a9e);
+  background: linear-gradient(160deg, var(--accent-canada), #134a32);
 }
 
 .btn:not(:disabled):hover {
@@ -414,7 +418,7 @@ body {
   margin: 0 1rem;
   padding: 0.75rem;
   border-radius: var(--radius);
-  background: rgba(240, 113, 120, 0.15);
+  background: rgba(194, 61, 74, 0.1);
   color: var(--error);
   font-size: 0.9rem;
   text-align: center;
@@ -438,11 +442,11 @@ body {
   background: var(--surface);
   color: var(--text);
   max-width: min(480px, calc(100vw - 2rem));
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 24px 48px var(--shadow-strong);
 }
 
 .modal::backdrop {
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(21, 53, 36, 0.35);
   backdrop-filter: blur(4px);
 }
 
@@ -745,7 +749,7 @@ body {
   background-repeat: no-repeat;
   flex-shrink: 0;
   transition: border-color 0.15s, transform 0.1s;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 16px var(--shadow-soft);
 }
 
 .taxon-pick:hover {
@@ -756,7 +760,7 @@ body {
 .taxon-pick:focus {
   outline: none;
   border-color: var(--accent-cackling);
-  box-shadow: 0 0 0 3px rgba(61, 154, 110, 0.35);
+  box-shadow: 0 0 0 3px rgba(45, 143, 82, 0.35);
 }
 
 .taxon-pick-label {
@@ -873,7 +877,7 @@ body {
   border-radius: 10px;
   object-fit: cover;
   background: var(--surface);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(21, 53, 36, 0.08);
 }
 
 .preset-btn-img--placeholder {
@@ -910,12 +914,12 @@ body {
 }
 
 .preset-btn:hover .preset-btn-img {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(21, 53, 36, 0.1);
 }
 
 .preset-btn--active {
   border-color: var(--accent-canada);
-  background: rgba(74, 124, 199, 0.12);
+  background: rgba(45, 143, 82, 0.12);
 }
 
 .modal-nested {
